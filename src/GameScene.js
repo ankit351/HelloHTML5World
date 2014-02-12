@@ -2,18 +2,20 @@ var TAG_SPRITE_MANAGER = 1;
 var PTM_RATIO = 32;
 
 var Game = cc.Layer.extend({
-    isMouseDown:false,
-    world:null,
-    screenSize:null,
-    lazyLayer:null,
-    groundsprite:null,
-    birdbody:null,
-    tubeArray:null,
-    birdSize:null,
-    drawArray:null,/******   tempDraw  code ******/
-    birdDraw:null,/******   tempDraw  code ******/
+    isMouseDown: false,
+    world: null,
+    screenSize: null,
+    lazyLayer: null,
+    groundSize: null,
+    birdbody: null,
+    tubeArray: null,
+    birdSize: null,
+    birdSprite:null,
+    birdPicName:null,
+    drawArray: null, /******   tempDraw  code ******/
+    birdDraw: null, /******   tempDraw  code ******/
 
-    init:function () {
+    init: function () {
         this._super();
 
         screenSize = cc.Director.getInstance().getWinSize();
@@ -22,16 +24,31 @@ var Game = cc.Layer.extend({
         lazyLayer = cc.Layer.create();
         this.addChild(lazyLayer);
 
-        tubeArray =  Array();
-        drawArray =  Array();/******   tempDraw  code ******/
+        tubeArray = Array();
+        drawArray = Array();
+        /******   tempDraw  code ******/
 
-        birdSize = cc.Sprite.create(s_Bird).getContentSize();
+        birdSize = cc.Sprite.create(s_Bird1).getContentSize();
 
-        groundsprite = cc.Sprite.create(s_Ground);
-        var groundSize = groundsprite.getContentSize();
-        groundsprite.setPosition(screenSize.width / 2, groundSize.height/2);
-        lazyLayer.addChild(groundsprite, 0);
-        groundsprite.setScaleX(10);
+        var bgsprite = cc.Sprite.create(s_bg);
+        bgsprite.setPosition(screenSize.width / 2, screenSize.height / 2);
+        lazyLayer.addChild(bgsprite, 0);
+
+        for (var i = 0; i < 2; i++) {
+            var groundsprite = cc.Sprite.create(s_Ground);
+            groundSize = groundsprite.getContentSize();
+            groundsprite.setPosition(screenSize.width / 2 + screenSize.width * i, groundSize.height / 2);
+            lazyLayer.addChild(groundsprite, 0);
+
+            var ｍoveToA = cc.MoveTo.create(s_groundSpeed * (i + 1), cc.p(-screenSize.width / 2, groundsprite.getPositionY()));
+
+            var Action = cc.Sequence.create(
+                ｍoveToA,
+                cc.CallFunc.create(this.groundCallback, groundsprite,this)
+            );
+            groundsprite.runAction(Action);
+        }
+
 
         var b2Vec2 = Box2D.Common.Math.b2Vec2
             , b2BodyDef = Box2D.Dynamics.b2BodyDef
@@ -71,7 +88,7 @@ var Game = cc.Layer.extend({
         bodyDef.position.Set(10, screenSize.height / PTM_RATIO + 1.8);
         this.world.CreateBody(bodyDef).CreateFixture(fixDef);
         // bottom
-        bodyDef.position.Set(10, groundsprite.getContentSize().height / PTM_RATIO-2.2);
+        bodyDef.position.Set(10, groundSize.height / PTM_RATIO - 2.2);
         this.world.CreateBody(bodyDef).CreateFixture(fixDef);
 
         fixDef.shape.SetAsBox(2, 14);
@@ -84,20 +101,53 @@ var Game = cc.Layer.extend({
 
         //Set up sprite
         //birdSprite = mgr;
-        var mgr = cc.SpriteBatchNode.create(s_Bird, 150);
-        this.addChild(mgr, 0, TAG_SPRITE_MANAGER);
+        birdSprite = cc.SpriteBatchNode.create(s_Bird1, 150);
+        this.addChild(birdSprite, 0, TAG_SPRITE_MANAGER);
+        birdPicName = s_Bird1;
+
+
 
         birdbody = this.addNewSpriteWithCoords(cc.p(screenSize.width / 5, screenSize.height / 1.2));
         this.scheduleUpdate();
+        this.schedule(this.changeSpriteFrame, s_sparkSpeed);
 
-        birdDraw = cc.DrawNode.create();/******   tempDraw  code ******/
-        this.addChild(birdDraw, 1 );/******   tempDraw  code ******/
+        birdDraw = cc.DrawNode.create();
+        /******   tempDraw  code ******/
+        this.addChild(birdDraw, 1);
+        /******   tempDraw  code ******/
 
 
         this.createTube(0.0);
-        this.schedule(this.createTube,s_createTubeTime);
+        this.schedule(this.createTube, s_createTubeTime);
 
         return true;
+    },
+    groundCallback: function (groundsprite,self)
+    {
+        groundsprite.setPosition(screenSize.width/2+screenSize.width-10, groundSize.height/2);
+
+        var ｍoveToA = cc.MoveTo.create(s_groundSpeed*2,cc.p(-screenSize.width/2,groundsprite.getPositionY()));
+
+        var Action = cc.Sequence.create(
+            ｍoveToA,
+            cc.CallFunc.create(self.groundCallback, groundsprite,self)
+        );
+        groundsprite.runAction(Action);
+    },
+    changeSpriteFrame:function()
+    {
+        if(birdPicName == s_Bird1)
+        {
+            birdPicName = s_Bird2;
+        }
+        else
+        {
+            birdPicName = s_Bird1;
+        }
+
+        var aSprite = cc.Sprite.create(birdPicName);
+        birdSprite.setTexture(aSprite.getTexture());
+
     },
     onTouchesBegan:function (touches, event) {
         this.isMouseDown = true;
@@ -125,7 +175,7 @@ var Game = cc.Layer.extend({
         var batch = this.getChildByTag(TAG_SPRITE_MANAGER);
 
 
-        var aSprite = cc.Sprite.create(s_Bird);
+        var aSprite = cc.Sprite.create(s_Bird1);
         var spriteSize = aSprite.getContentSize();
         var sprite = cc.Sprite.createWithTexture(batch.getTexture(), cc.rect(0, 0, spriteSize.width, spriteSize.height));
         batch.addChild(sprite);
@@ -192,7 +242,11 @@ var Game = cc.Layer.extend({
 
             if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()))
             {
-                //alert("Game Over!")
+                alert("Game Over!");
+                var nextScene = cc.Scene.create();
+                var nextLayer = new GameScene;
+                nextScene.addChild(nextLayer);
+                cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.0, nextScene));
             }
         }
 
@@ -207,12 +261,18 @@ var Game = cc.Layer.extend({
     },
     createTube:function (dt)
     {
+        var topRandomNum = 1.2+Math.random(); //该方法产生一个0到1之间的浮点数。
+        var bottomRandomNum = 1.2+Math.random();
+
+
+
+
         var topSprite = cc.Sprite.create(s_PipeTop);
         topSprite.setAnchorPoint(1.0,1.0);
         topSprite.setPosition(screenSize.width, screenSize.height);
         lazyLayer.addChild(topSprite, 0);
 
-        var topRandomNum = 1.2+Math.random(); //该方法产生一个0到1之间的浮点数。
+
         topSprite.setScaleY(topRandomNum);
 
         var topMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,topSprite.getPositionY()));
@@ -237,11 +297,10 @@ var Game = cc.Layer.extend({
 
         var bottomSprite = cc.Sprite.create(s_PipeBottom);
         bottomSprite.setAnchorPoint(1.0,0.0);
-        var groundSize = groundsprite.getContentSize();
         bottomSprite.setPosition(screenSize.width, groundSize.height);
         lazyLayer.addChild(bottomSprite, 0);
 
-        var bottomRandomNum = 1.2+Math.random();
+
         bottomSprite.setScaleY(bottomRandomNum);
 
         var bottomMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,bottomSprite.getPositionY()));
@@ -276,8 +335,6 @@ var Game = cc.Layer.extend({
         tubeArray.shift();
         drawArray.shift();
     }
-
-
 });
 
 var GameScene = cc.Scene.extend({

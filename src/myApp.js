@@ -109,7 +109,7 @@ var Helloworld = cc.Layer.extend({
         var nextScene = cc.Scene.create();
         var nextLayer = new GameScene;
         nextScene.addChild(nextLayer);
-        cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.4, nextScene));
+        cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.0, nextScene));
 
     },
     onTouchesCancelled:function (touches, event) {
