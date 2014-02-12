@@ -1,7 +1,6 @@
 var TAG_SPRITE_MANAGER = 1;
 var PTM_RATIO = 32;
 
-
 var Game = cc.Layer.extend({
     isMouseDown:false,
     world:null,
@@ -11,6 +10,8 @@ var Game = cc.Layer.extend({
     birdbody:null,
     tubeArray:null,
     birdSize:null,
+    drawArray:null,/******   tempDraw  code ******/
+    birdDraw:null,/******   tempDraw  code ******/
 
     init:function () {
         this._super();
@@ -22,6 +23,7 @@ var Game = cc.Layer.extend({
         this.addChild(lazyLayer);
 
         tubeArray =  Array();
+        drawArray =  Array();/******   tempDraw  code ******/
 
         birdSize = cc.Sprite.create(s_Bird).getContentSize();
 
@@ -30,8 +32,6 @@ var Game = cc.Layer.extend({
         groundsprite.setPosition(screenSize.width / 2, groundSize.height/2);
         lazyLayer.addChild(groundsprite, 0);
         groundsprite.setScaleX(10);
-
-
 
         var b2Vec2 = Box2D.Common.Math.b2Vec2
             , b2BodyDef = Box2D.Dynamics.b2BodyDef
@@ -90,6 +90,8 @@ var Game = cc.Layer.extend({
         birdbody = this.addNewSpriteWithCoords(cc.p(screenSize.width / 5, screenSize.height / 1.2));
         this.scheduleUpdate();
 
+        birdDraw = cc.DrawNode.create();/******   tempDraw  code ******/
+        this.addChild(birdDraw, 1 );/******   tempDraw  code ******/
 
 
         this.createTube(0.0);
@@ -99,19 +101,6 @@ var Game = cc.Layer.extend({
     },
     onTouchesBegan:function (touches, event) {
         this.isMouseDown = true;
-/*
-        this.stopAllActions();
-        var moveToA = cc.MoveTo.create(0.1,cc.p(birdSprite.getPositionX(),birdSprite.getPositionY()+60));
-        birdSprite.runAction(moveToA);
-
-
-        var action = cc.Sequence.create(
-            moveToA,
-            cc.CallFunc.create(this.onCallback1, this)
-        );
-
-        birdSprite.runAction(action);
-        */
 
         var b2Vec2 = Box2D.Common.Math.b2Vec2;
         var force = new b2Vec2(0, s_flySpeed);
@@ -130,14 +119,7 @@ var Game = cc.Layer.extend({
     },
     onTouchesCancelled:function (touches, event) {
         console.log("onTouchesCancelled");
-    },/*
-    onCallback1:function()
-    {
-        var t = Math.sqrt(2*birdSprite.getPositionY()/9.8);
-        var moveToA = cc.MoveTo.create(t,cc.p(birdSprite.getPositionX(),0));
-        birdSprite.runAction(moveToA);
-    }
-*/
+    },
     addNewSpriteWithCoords:function (p) {
         //UXLog(L"Add sprite %0.2f x %02.f",p.x,p.y);
         var batch = this.getChildByTag(TAG_SPRITE_MANAGER);
@@ -177,11 +159,7 @@ var Game = cc.Layer.extend({
         return body;
     },
     update:function (dt) {
-        //It is recommended that a fixed time step is used with Box2D for stability
-        //of the simulation, however, we are using a variable time step here.
-        //You need to make an informed choice, the following URL is useful
-        //http://gafferongames.com/game-physics/fix-your-timestep/
-        //alert("asdjkahsdjka");
+
         var velocityIterations = 8;
         var positionIterations = 1;
 
@@ -199,28 +177,32 @@ var Game = cc.Layer.extend({
                 //console.log(b.GetAngle());
             }
         }
-
-        for(var element in tubeArray)
+        birdBox = cc.rect(birdbody.GetPosition().x * PTM_RATIO-birdSize.width/2,birdbody.GetPosition().y * PTM_RATIO-birdSize.height/2,birdSize.width,birdSize.height);
+        for(var i =0;i<tubeArray.length;i++)
         {
-            var mY = 0
-            if(tubeArray[element].getBoundingBox().y>100)
-            {
-                mY = 20;
-            }
-            else
-            {
-                mY = 0;
-            }
+            var element = tubeArray[i];
 
-            var bodyRect = cc.rect(birdbody.GetPosition().x * PTM_RATIO-30,birdbody.GetPosition().y * PTM_RATIO-mY,birdSize.width,birdSize.height);
-            cc.log("11="+bodyRect.y);
-            cc.log("22="+tubeArray[element].getBoundingBox().y);
-            if(cc.rectIntersectsRect(bodyRect,tubeArray[element].getBoundingBox()))
-            {
-                alert("Game Over!")
-            }
+            /******   tempDraw  code ******/
+            var draw = drawArray[i];
+            draw.clear();
+            var Box = element.getBoundingBox();
+            var Points = [ cc.p(Box.x,Box.y), cc.p(Box.x+Box.width,Box.y), cc.p(Box.x+Box.width,Box.y+Box.height), cc.p(Box.x,Box.y+Box.height) ];
+            draw.drawPoly(Points, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+            /******   tempDraw  code ******/
 
+            if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()))
+            {
+                //alert("Game Over!")
+            }
         }
+
+        /******   tempDraw  code ******/
+        birdDraw.clear();
+
+        var birdPoints = [ cc.p(birdBox.x,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y+birdBox.height), cc.p(birdBox.x,birdBox.y+birdBox.height) ];
+        birdDraw.drawPoly(birdPoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+        /******   tempDraw  code ******/
+
         //cc.log(birdbody.GetPosition().y * PTM_RATIO);
     },
     createTube:function (dt)
@@ -234,14 +216,24 @@ var Game = cc.Layer.extend({
         topSprite.setScaleY(topRandomNum);
 
         var topMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,topSprite.getPositionY()));
-        topSprite.runAction(topMoveToA);
+        var topDraw = cc.DrawNode.create();
         var topAction = cc.Sequence.create(
             topMoveToA,
-            cc.CallFunc.create(this.topCallback, topSprite)
+            cc.CallFunc.create(this.topCallback, topSprite,topDraw)
         );
 
         topSprite.runAction(topAction);
         tubeArray.push(topSprite);
+
+
+        this.addChild( topDraw, 1 );
+        var topBox = topSprite.getBoundingBox();
+        var topPoints = [ cc.p(topBox.x,topBox.y), cc.p(topBox.x+topBox.width,topBox.y), cc.p(topBox.x+topBox.width,topBox.y+topBox.height), cc.p(topBox.x,topBox.y+topBox.height) ];
+        topDraw.drawPoly(topPoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+        drawArray.push(topDraw);
+
+
+
 
         var bottomSprite = cc.Sprite.create(s_PipeBottom);
         bottomSprite.setAnchorPoint(1.0,0.0);
@@ -253,24 +245,36 @@ var Game = cc.Layer.extend({
         bottomSprite.setScaleY(bottomRandomNum);
 
         var bottomMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,bottomSprite.getPositionY()));
-        bottomSprite.runAction(bottomMoveToA);
+        var bottomDraw = cc.DrawNode.create();
         var bottomAction = cc.Sequence.create(
             bottomMoveToA,
-            cc.CallFunc.create(this.bottomCallback, bottomSprite)
+            cc.CallFunc.create(this.bottomCallback, bottomSprite,bottomDraw)
         );
 
         bottomSprite.runAction(bottomAction);
         tubeArray.push(bottomSprite);
+
+
+        this.addChild( bottomDraw, 1 );
+        var bottomBox = topSprite.getBoundingBox();
+        var bottompoints = [ cc.p(bottomBox.x,bottomBox.y), cc.p(bottomBox.x+bottomBox.width,bottomBox.y), cc.p(bottomBox.x+bottomBox.width,bottomBox.y+bottomBox.height), cc.p(bottomBox.x,bottomBox.y+bottomBox.height) ];
+        bottomDraw.drawPoly(bottompoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+        drawArray.push(bottomDraw);
+
     },
-    topCallback:function(topSprite)
+    topCallback:function(topSprite,topDraw)
     {
         topSprite.removeFromParent(true);
+        topDraw.clear();
         tubeArray.shift();
+        drawArray.shift();
     },
-    bottomCallback:function(bottomSprite)
+    bottomCallback:function(bottomSprite,bottomDraw)
     {
         bottomSprite.removeFromParent(true);
+        bottomDraw.clear();
         tubeArray.shift();
+        drawArray.shift();
     }
 
 
