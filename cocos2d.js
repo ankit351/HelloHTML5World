@@ -28,8 +28,8 @@
     var d = document;
     var c = {
         COCOS2D_DEBUG:2, //0 to turn debug off, 1 for basic debug, and 2 for full debug
-        box2d:true,
-        chipmunk:false,
+        box2d:false,
+        chipmunk:true,
         showFPS:true,
         frameRate:60,
         loadExtension:false,

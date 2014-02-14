@@ -1,5 +1,5 @@
-var TAG_SPRITE_MANAGER = 1;
-var PTM_RATIO = 32;
+var FLUID_DENSITY = 0.00014;
+var FLUID_DRAG = 2.0;
 
 var Game = cc.Layer.extend({
     isMouseDown: false,
@@ -14,7 +14,7 @@ var Game = cc.Layer.extend({
     birdPicName:null,
     drawArray: null, /******   tempDraw  code ******/
     birdDraw: null, /******   tempDraw  code ******/
-
+    space:null,
     init: function () {
         this._super();
 
@@ -34,7 +34,8 @@ var Game = cc.Layer.extend({
         bgsprite.setPosition(screenSize.width / 2, screenSize.height / 2);
         lazyLayer.addChild(bgsprite, 0);
 
-        for (var i = 0; i < 2; i++) {
+        for (var i = 0; i < 2; i++)
+        {
             var groundsprite = cc.Sprite.create(s_Ground);
             groundSize = groundsprite.getContentSize();
             groundsprite.setPosition(screenSize.width / 2 + screenSize.width * i, groundSize.height / 2);
@@ -42,83 +43,29 @@ var Game = cc.Layer.extend({
 
             var ｍoveToA = cc.MoveTo.create(s_groundSpeed * (i + 1), cc.p(-screenSize.width / 2, groundsprite.getPositionY()));
 
-            var Action = cc.Sequence.create(
+            var Action = cc.Sequence.create
+            (
                 ｍoveToA,
                 cc.CallFunc.create(this.groundCallback, groundsprite,this)
             );
             groundsprite.runAction(Action);
         }
 
-
-        var b2Vec2 = Box2D.Common.Math.b2Vec2
-            , b2BodyDef = Box2D.Dynamics.b2BodyDef
-            , b2Body = Box2D.Dynamics.b2Body
-            , b2FixtureDef = Box2D.Dynamics.b2FixtureDef
-            , b2World = Box2D.Dynamics.b2World
-            , b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
-
-
-        //UXLog(L"Screen width %0.2f screen height %0.2f",screenSize.width,screenSize.height);
-
-        // Construct a world object, which will hold and simulate the rigid bodies.
-        this.world = new b2World(new b2Vec2(0, -10), true);
-        this.world.SetContinuousPhysics(true);
-
-        // Define the ground body.
-        //var groundBodyDef = new b2BodyDef(); // TODO
-        //groundBodyDef.position.Set(screenSize.width / 2 / PTM_RATIO, screenSize.height / 2 / PTM_RATIO); // bottom-left corner
-
-        // Call the body factory which allocates memory for the ground body
-        // from a pool and creates the ground box shape (also from a pool).
-        // The body is also added to the world.
-        //var groundBody = this.world.CreateBody(groundBodyDef);
-
-        var fixDef = new b2FixtureDef;
-        fixDef.density = 1.0;
-        fixDef.friction = 0.5;
-        fixDef.restitution = 0.2;
-
-        var bodyDef = new b2BodyDef;
-
-        //create ground
-        bodyDef.type = b2Body.b2_staticBody;
-        fixDef.shape = new b2PolygonShape;
-        fixDef.shape.SetAsBox(20, 2);
-        // upper
-        bodyDef.position.Set(10, screenSize.height / PTM_RATIO + 1.8);
-        this.world.CreateBody(bodyDef).CreateFixture(fixDef);
-        // bottom
-        bodyDef.position.Set(10, groundSize.height / PTM_RATIO - 2.2);
-        this.world.CreateBody(bodyDef).CreateFixture(fixDef);
-
-        fixDef.shape.SetAsBox(2, 14);
-        // left
-        bodyDef.position.Set(-1.8, 13);
-        this.world.CreateBody(bodyDef).CreateFixture(fixDef);
-        // right
-        bodyDef.position.Set(26.8, 13);
-        this.world.CreateBody(bodyDef).CreateFixture(fixDef);
-
-        //Set up sprite
-        //birdSprite = mgr;
-        birdSprite = cc.SpriteBatchNode.create(s_Bird1, 150);
-        this.addChild(birdSprite, 0, TAG_SPRITE_MANAGER);
-        birdPicName = s_Bird1;
-
-
-
-        birdbody = this.addNewSpriteWithCoords(cc.p(screenSize.width / 5, screenSize.height / 1.2));
-        this.scheduleUpdate();
-        this.schedule(this.changeSpriteFrame, s_sparkSpeed);
-
         birdDraw = cc.DrawNode.create();
-        /******   tempDraw  code ******/
-        this.addChild(birdDraw, 1);
-        /******   tempDraw  code ******/
+        this.addChild( birdDraw, 1 );
+
+        space = new cp.Space();
+        this.initPhysics();
+        this.scheduleUpdate();
+
+        birdPicName = s_Bird1;
+        birdSprite =  this.createPhysicsSprite( cc.p(screenSize.width / 5, screenSize.height / 1.2) ,this);
+        this.addChild( birdSprite );
 
 
-        this.createTube(0.0);
         this.schedule(this.createTube, s_createTubeTime);
+
+        this.schedule(this.changeSpriteFrame, s_sparkSpeed);
 
         return true;
     },
@@ -147,133 +94,13 @@ var Game = cc.Layer.extend({
 
         var aSprite = cc.Sprite.create(birdPicName);
         birdSprite.setTexture(aSprite.getTexture());
-
-    },
-    onTouchesBegan:function (touches, event) {
-        this.isMouseDown = true;
-
-        var b2Vec2 = Box2D.Common.Math.b2Vec2;
-        var force = new b2Vec2(0, s_flySpeed);
-        birdbody.ApplyImpulse(force,birdbody.GetPosition());
-
-    },
-    onTouchesMoved:function (touches, event) {
-        if (this.isMouseDown) {
-            if (touches) {
-                //this.circle.setPosition(touches[0].getLocation().x, touches[0].getLocation().y);
-            }
-        }
-    },
-    onTouchesEnded:function (touches, event) {
-        this.isMouseDown = false;
-    },
-    onTouchesCancelled:function (touches, event) {
-        console.log("onTouchesCancelled");
-    },
-    addNewSpriteWithCoords:function (p) {
-        //UXLog(L"Add sprite %0.2f x %02.f",p.x,p.y);
-        var batch = this.getChildByTag(TAG_SPRITE_MANAGER);
-
-
-        var aSprite = cc.Sprite.create(s_Bird1);
-        var spriteSize = aSprite.getContentSize();
-        var sprite = cc.Sprite.createWithTexture(batch.getTexture(), cc.rect(0, 0, spriteSize.width, spriteSize.height));
-        batch.addChild(sprite);
-
-        sprite.setPosition(p.x, p.y);
-
-        // Define the dynamic body.
-        //Set up a 1m squared box in the physics world
-        var b2BodyDef = Box2D.Dynamics.b2BodyDef
-            , b2Body = Box2D.Dynamics.b2Body
-            , b2FixtureDef = Box2D.Dynamics.b2FixtureDef
-            , b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
-
-        var bodyDef = new b2BodyDef();
-        bodyDef.type = b2Body.b2_dynamicBody;
-        bodyDef.position.Set(p.x / PTM_RATIO, p.y / PTM_RATIO);
-        bodyDef.userData = sprite;
-        var body = this.world.CreateBody(bodyDef);
-
-        // Define another box shape for our dynamic body.
-        var dynamicBox = new b2PolygonShape();
-        dynamicBox.SetAsBox(0.5, 0.5);//These are mid points for our 1m box
-        //dynamicBox.SetAsBox(1.0, 1.0);
-        // Define the dynamic body fixture.
-        var fixtureDef = new b2FixtureDef();
-        fixtureDef.shape = dynamicBox;
-        fixtureDef.density = 1.0;
-        fixtureDef.friction = 0.3;
-        body.CreateFixture(fixtureDef);
-
-        return body;
-    },
-    update:function (dt) {
-
-        var velocityIterations = 8;
-        var positionIterations = 1;
-
-        // Instruct the world to perform a single step of simulation. It is
-        // generally best to keep the time step and iterations fixed.
-        this.world.Step(dt, velocityIterations, positionIterations);
-
-        //Iterate over the bodies in the physics world
-        for (var b = this.world.GetBodyList(); b; b = b.GetNext()) {
-            if (b.GetUserData() != null) {
-                //Synchronize the AtlasSprites position and rotation with the corresponding body
-                var myActor = b.GetUserData();
-                myActor.setPosition(b.GetPosition().x * PTM_RATIO, b.GetPosition().y * PTM_RATIO);
-                myActor.setRotation(-1 * cc.RADIANS_TO_DEGREES(b.GetAngle()));
-                //console.log(b.GetAngle());
-            }
-        }
-        birdBox = cc.rect(birdbody.GetPosition().x * PTM_RATIO-birdSize.width/2,birdbody.GetPosition().y * PTM_RATIO-birdSize.height/2,birdSize.width,birdSize.height);
-        for(var i =0;i<tubeArray.length;i++)
-        {
-            var element = tubeArray[i];
-
-            /******   tempDraw  code ******/
-            var draw = drawArray[i];
-            draw.clear();
-            var Box = element.getBoundingBox();
-            var Points = [ cc.p(Box.x,Box.y), cc.p(Box.x+Box.width,Box.y), cc.p(Box.x+Box.width,Box.y+Box.height), cc.p(Box.x,Box.y+Box.height) ];
-            draw.drawPoly(Points, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
-            /******   tempDraw  code ******/
-
-            if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()))
-            {
-                alert("Game Over!");
-                var nextScene = cc.Scene.create();
-                var nextLayer = new GameScene;
-                nextScene.addChild(nextLayer);
-                cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.0, nextScene));
-            }
-        }
-
-        /******   tempDraw  code ******/
-        birdDraw.clear();
-
-        var birdPoints = [ cc.p(birdBox.x,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y+birdBox.height), cc.p(birdBox.x,birdBox.y+birdBox.height) ];
-        birdDraw.drawPoly(birdPoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
-        /******   tempDraw  code ******/
-
-        //cc.log(birdbody.GetPosition().y * PTM_RATIO);
     },
     createTube:function (dt)
     {
-        var topRandomNum = 1.2+Math.random(); //该方法产生一个0到1之间的浮点数。
-        var bottomRandomNum = 1.2+Math.random();
-
-
-
-
         var topSprite = cc.Sprite.create(s_PipeTop);
         topSprite.setAnchorPoint(1.0,1.0);
         topSprite.setPosition(screenSize.width, screenSize.height);
         lazyLayer.addChild(topSprite, 0);
-
-
-        topSprite.setScaleY(topRandomNum);
 
         var topMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,topSprite.getPositionY()));
         var topDraw = cc.DrawNode.create();
@@ -281,7 +108,6 @@ var Game = cc.Layer.extend({
             topMoveToA,
             cc.CallFunc.create(this.topCallback, topSprite,topDraw)
         );
-
         topSprite.runAction(topAction);
         tubeArray.push(topSprite);
 
@@ -300,9 +126,6 @@ var Game = cc.Layer.extend({
         bottomSprite.setPosition(screenSize.width, groundSize.height);
         lazyLayer.addChild(bottomSprite, 0);
 
-
-        bottomSprite.setScaleY(bottomRandomNum);
-
         var bottomMoveToA = cc.MoveTo.create(s_tubeSpeed,cc.p(0,bottomSprite.getPositionY()));
         var bottomDraw = cc.DrawNode.create();
         var bottomAction = cc.Sequence.create(
@@ -312,6 +135,15 @@ var Game = cc.Layer.extend({
 
         bottomSprite.runAction(bottomAction);
         tubeArray.push(bottomSprite);
+/*
+        var topRandomNum = 1.2+Math.random();
+        var topScaleByA = cc.ScaleBy.create(s_tubeSpeed,cc.p(0,topSprite.getPositionY()));
+        var topScaleAction = cc.Sequence.create(
+            topScaleToA,
+            cc.CallFunc.create(this.topCallback, topSprite)
+        );
+        topSprite.runAction(topScaleAction);
+*/
 
 
         this.addChild( bottomDraw, 1 );
@@ -320,6 +152,147 @@ var Game = cc.Layer.extend({
         bottomDraw.drawPoly(bottompoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
         drawArray.push(bottomDraw);
 
+
+
+
+        var boolNum = Math.floor(Math.random()*2);
+        cc.log("boolNum="+boolNum);
+
+        if(0==boolNum)
+        {
+            var topRandomNum = Math.floor(Math.random()*2)+2;
+
+            if(3 == topRandomNum)
+            {
+                topSprite.setScaleY(2.5);
+            }
+            else
+            {
+                topSprite.setScaleY(topRandomNum);
+            }
+            cc.log("topRandomNum="+topRandomNum);
+
+        }
+        else
+        {
+            var bottomRandomNum = Math.floor(Math.random()*2)+2;
+            if(3 == bottomRandomNum)
+            {
+                bottomSprite.setScaleY(2.5);
+            }
+            else
+            {
+                bottomSprite.setScaleY(bottomRandomNum);
+            }
+            cc.log("bottomRandomNum="+bottomRandomNum);
+
+        }
+
+/*
+        var topHeight= topSprite.getBoundingBox().height;
+        var bottomHeight= bottomSprite.getBoundingBox().height;
+
+        var topRandomNum = Math.floor(Math.random()*1.2)+Math.random(); //该方法产生一个0到1之间的浮点数。
+        var bottomRandomNum = Math.floor(Math.random()*1.2)+Math.random();
+
+        while(true)
+        {
+            var spaceHeight = screenSize.height-topHeight*topRandomNum+bottomHeight*bottomRandomNum;
+            //if(spaceHeight>screenSize.height/8 && spaceHeight<screenSize.height/6)
+            if(spaceHeight>birdSize.height*2 && spaceHeight<birdSize.height*4)
+            {
+                topSprite.setScaleY(topRandomNum);
+                bottomSprite.setScaleY(bottomRandomNum);
+                break;
+            }
+        }
+        alert("finish");
+
+        */
+    },
+
+    initPhysics:function()
+    {
+        var staticBody = space.staticBody;
+
+        // Walls
+        var walls = [ new cp.SegmentShape( staticBody, cp.v(0,0), cp.v(screenSize.width,0), 0 ),				// bottom
+            new cp.SegmentShape( staticBody, cp.v(0,screenSize.height+80), cp.v(screenSize.width,screenSize.height+50), 0),	// top
+            new cp.SegmentShape( staticBody, cp.v(0,0), cp.v(0,screenSize.height), 0),				// left
+            new cp.SegmentShape( staticBody, cp.v(screenSize.width,0), cp.v(screenSize.width,screenSize.height), 0)	// right
+        ];
+        for( var i=0; i < walls.length; i++ ) {
+            var shape = walls[i];
+            if(0 == i)
+            {
+                shape.setElasticity(2.0);
+            }
+            else
+            {
+                shape.setElasticity(1.0);
+            }
+
+            shape.setFriction(1);
+
+            space.addStaticShape( shape );
+        }
+
+        // Gravity
+        space.gravity = cp.v(0, -700);
+    },
+    createPhysicsSprite:function( pos ,self)
+    {
+        var body = new cp.Body(1, cp.momentForBox(1, 48, 108) );
+        body.setPos( pos );
+        birdbody = body;
+        space.addBody( body );
+        var shape = new cp.BoxShape( body, 48, 108);
+        shape.setElasticity( 0.5 );
+        shape.setFriction( 0.5 );
+        space.addShape( shape );
+
+        var sprite = cc.PhysicsSprite.create(s_Bird1);
+        sprite.setBody( body );
+
+        return sprite;
+    },
+   update:function( delta )
+    {
+        space.step( delta );
+
+         birdBox = cc.rect(birdSprite.getPosition().x-birdSize.width/2,birdSprite.getPosition().y-birdSize.height/2,birdSize.width,birdSize.height);
+        for(var i =0;i<tubeArray.length;i++)
+        {
+            var element = tubeArray[i];
+
+            /******   tempDraw  code ******/
+            var draw = drawArray[i];
+            draw.clear();
+            var Box = element.getBoundingBox();
+            var Points = [ cc.p(Box.x,Box.y), cc.p(Box.x+Box.width,Box.y), cc.p(Box.x+Box.width,Box.y+Box.height), cc.p(Box.x,Box.y+Box.height) ];
+            draw.drawPoly(Points, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+
+            /******   tempDraw  code ******/
+
+            if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()))
+            {
+                //alert("Game Over!");
+                this.stopAllActions();
+                /*
+                var nextScene = cc.Scene.create();
+                var nextLayer = new GameScene;
+                nextScene.addChild(nextLayer);
+                cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.0, nextScene));
+                */
+            }
+        }
+
+             /******   tempDraw  code ******/
+             birdDraw.clear();
+
+             var birdPoints = [ cc.p(birdBox.x,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y), cc.p(birdBox.x+birdBox.width,birdBox.y+birdBox.height), cc.p(birdBox.x,birdBox.y+birdBox.height) ];
+             birdDraw.drawPoly(birdPoints, cc.c4f(1,0,0,0.0), 1, cc.c4f(0,0,1,1) );
+             /******   tempDraw  code ******/
     },
     topCallback:function(topSprite,topDraw)
     {
@@ -334,7 +307,28 @@ var Game = cc.Layer.extend({
         bottomDraw.clear();
         tubeArray.shift();
         drawArray.shift();
+    },
+    onTouchesBegan:function (touches, event) {
+        this.isMouseDown = true;
+
+        //var r = cp.v.sub(centroid, body.getPos());
+        birdbody.applyImpulse(cp.v(0,400), cp.v(0,0));
+
+    },
+    onTouchesMoved:function (touches, event) {
+        if (this.isMouseDown) {
+            if (touches) {
+                //this.circle.setPosition(touches[0].getLocation().x, touches[0].getLocation().y);
+            }
+        }
+    },
+    onTouchesEnded:function (touches, event) {
+        this.isMouseDown = false;
+    },
+    onTouchesCancelled:function (touches, event) {
+        console.log("onTouchesCancelled");
     }
+
 });
 
 var GameScene = cc.Scene.extend({
@@ -345,4 +339,6 @@ var GameScene = cc.Scene.extend({
         this.addChild(layer);
     }
 });
+
+
 
