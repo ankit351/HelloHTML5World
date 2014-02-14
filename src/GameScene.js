@@ -1,12 +1,15 @@
 var FLUID_DENSITY = 0.00014;
 var FLUID_DRAG = 2.0;
-
+var isGameOver = false;
+var self = null;
 var Game = cc.Layer.extend({
     isMouseDown: false,
     world: null,
+    walls:null,
     screenSize: null,
     lazyLayer: null,
     groundSize: null,
+    groundArray: null,
     birdbody: null,
     tubeArray: null,
     birdSize: null,
@@ -17,7 +20,7 @@ var Game = cc.Layer.extend({
     space:null,
     init: function () {
         this._super();
-
+        self = this;
         screenSize = cc.Director.getInstance().getWinSize();
         this.setTouchEnabled(true);
 
@@ -26,6 +29,7 @@ var Game = cc.Layer.extend({
 
         tubeArray = Array();
         drawArray = Array();
+        groundArray = Array();
         /******   tempDraw  code ******/
 
         birdSize = cc.Sprite.create(s_Bird1).getContentSize();
@@ -49,8 +53,9 @@ var Game = cc.Layer.extend({
                 cc.CallFunc.create(this.groundCallback, groundsprite,this)
             );
             groundsprite.runAction(Action);
-        }
+            groundArray.push(groundsprite);
 
+        }
         birdDraw = cc.DrawNode.create();
         this.addChild( birdDraw, 1 );
 
@@ -156,7 +161,7 @@ var Game = cc.Layer.extend({
 
 
         var boolNum = Math.floor(Math.random()*2);
-        cc.log("boolNum="+boolNum);
+        //cc.log("boolNum="+boolNum);
 
         if(0==boolNum)
         {
@@ -170,7 +175,7 @@ var Game = cc.Layer.extend({
             {
                 topSprite.setScaleY(topRandomNum);
             }
-            cc.log("topRandomNum="+topRandomNum);
+            //cc.log("topRandomNum="+topRandomNum);
 
         }
         else
@@ -184,8 +189,7 @@ var Game = cc.Layer.extend({
             {
                 bottomSprite.setScaleY(bottomRandomNum);
             }
-            cc.log("bottomRandomNum="+bottomRandomNum);
-
+            //cc.log("bottomRandomNum="+bottomRandomNum);
         }
 
 /*
@@ -216,7 +220,7 @@ var Game = cc.Layer.extend({
         var staticBody = space.staticBody;
 
         // Walls
-        var walls = [ new cp.SegmentShape( staticBody, cp.v(0,0), cp.v(screenSize.width,0), 0 ),				// bottom
+        walls = [ new cp.SegmentShape( staticBody, cp.v(0,0), cp.v(screenSize.width,25), 0 ),				// bottom
             new cp.SegmentShape( staticBody, cp.v(0,screenSize.height+80), cp.v(screenSize.width,screenSize.height+50), 0),	// top
             new cp.SegmentShape( staticBody, cp.v(0,0), cp.v(0,screenSize.height), 0),				// left
             new cp.SegmentShape( staticBody, cp.v(screenSize.width,0), cp.v(screenSize.width,screenSize.height), 0)	// right
@@ -256,7 +260,7 @@ var Game = cc.Layer.extend({
 
         return sprite;
     },
-   update:function( delta )
+   update:function( delta ,self)
     {
         space.step( delta );
 
@@ -274,19 +278,26 @@ var Game = cc.Layer.extend({
 
             /******   tempDraw  code ******/
 
-            if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()))
+            if(cc.rectIntersectsRect(birdBox,element.getBoundingBox()) && !isGameOver)
             {
                 //alert("Game Over!");
-                this.stopAllActions();
                 /*
                 var nextScene = cc.Scene.create();
                 var nextLayer = new GameScene;
                 nextScene.addChild(nextLayer);
                 cc.Director.getInstance().replaceScene(cc.TransitionSlideInT.create(0.0, nextScene));
                 */
+                GameOver();
+                var shape = walls[0];
+                //shape.setElasticity(0.0);
+                //birdbody.setPosition(birdbody.getPositionX(),groundSize.height);
             }
         }
 
+        if(birdSprite.getPosition().y-birdSize.height/2<groundSize.height)
+        {
+            //GameOver();
+        }
              /******   tempDraw  code ******/
              birdDraw.clear();
 
@@ -308,12 +319,13 @@ var Game = cc.Layer.extend({
         tubeArray.shift();
         drawArray.shift();
     },
+
     onTouchesBegan:function (touches, event) {
         this.isMouseDown = true;
-
+        if(isGameOver)
+        return;
         //var r = cp.v.sub(centroid, body.getPos());
         birdbody.applyImpulse(cp.v(0,400), cp.v(0,0));
-
     },
     onTouchesMoved:function (touches, event) {
         if (this.isMouseDown) {
@@ -330,6 +342,31 @@ var Game = cc.Layer.extend({
     }
 
 });
+
+var GameOver = function()
+{
+    //this.unscheduleAllCallbacks();
+
+    /*
+     cc.Director.getInstance().pause();//暂停场景
+     cc.Director.getInstance().resume();
+     */
+    isGameOver =true;
+    //cc.ActionManager.getInstance().pauseAllRunningActions();
+
+    self.unschedule(self.createTube);
+    self.unschedule(self.changeSpriteFrame);
+
+    for(var i =0;i<tubeArray.length;i++)
+    {
+        tubeArray[i].stopAllActions();
+    }
+    for(var i =0;i<groundArray.length;i++)
+    {
+        groundArray[i].stopAllActions();
+    }
+}
+
 
 var GameScene = cc.Scene.extend({
     onEnter:function () {
