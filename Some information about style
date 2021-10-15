@@ -1,0 +1,62 @@
+<!doctype>
+
+<html>
+
+    <head>
+
+        <style>
+
+            sentence > word { margin-right: 5px; }
+
+            sentence > word:last-child {margin-right:0;}
+
+            word { font-size: 0; text-transform: lowercase; }
+
+            char::before { font-size: 10pt; content: attr(char); }
+
+            char[double]::before { content: attr(char) attr(char); }
+
+            word[ucfirst] > char:first-child::before {text-transform: uppercase; }
+
+            sentence[end]::after { content: attr(end); }
+
+        </style>
+
+    </head>
+
+    <body>
+
+        <sentence end="!">
+
+            <word ucfirst>
+
+                <char char="h"/>
+
+                <char char="e"/>
+
+                <char char="l" double/>
+
+                <char char="o"/>
+
+            </word>
+
+            <word ucfirst>
+
+                <char char="w"/>
+
+                <char char="o"/>
+
+                <char char="r"/>
+
+                <char char="l"/>
+
+                <char char="d"/>
+
+            </word>
+
+        </sentence>
+
+    </body>
+
+</html>
+
